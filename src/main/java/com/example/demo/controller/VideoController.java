@@ -32,12 +32,12 @@ public class VideoController {
 
     @GetMapping
     public ResponseEntity<List<VideoDto>> getAll() {
-        return ResponseEntity.ok(service.getAll());
+        return ResponseEntity.ok(service.getAllVideos());
     }
 
     @GetMapping("/available")
     public ResponseEntity<List<VideoDto>> getAvailable() {
-        return ResponseEntity.ok(service.getAvailable());
+        return ResponseEntity.ok(service.getAvailableVideos());
     }
 
     @PostMapping("/add/movie")
@@ -57,7 +57,8 @@ public class VideoController {
     @PutMapping("/{title}/rent")
     public ResponseEntity<?> rent(@PathVariable String title) {
         try {
-            VideoDto dto = service.rentByTitle(URLDecoder.decode(title, StandardCharsets.UTF_8));
+            String decoded = URLDecoder.decode(title, StandardCharsets.UTF_8);
+            VideoDto dto = service.rentVideo(decoded);
             return ResponseEntity.ok(dto);
         } catch (NoSuchElementException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Video not found: " + title));
@@ -67,7 +68,8 @@ public class VideoController {
     @PutMapping("/{title}/return")
     public ResponseEntity<?> returnVideo(@PathVariable String title) {
         try {
-            VideoDto dto = service.returnByTitle(URLDecoder.decode(title, StandardCharsets.UTF_8));
+            String decoded = URLDecoder.decode(title, StandardCharsets.UTF_8);
+            VideoDto dto = service.returnVideo(decoded);
             return ResponseEntity.ok(dto);
         } catch (NoSuchElementException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Video not found: " + title));
