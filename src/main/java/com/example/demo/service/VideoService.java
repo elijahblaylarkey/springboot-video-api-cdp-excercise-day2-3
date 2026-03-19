@@ -5,39 +5,45 @@ import com.example.demo.dto.VideoDto;
 import com.example.demo.model.Movie;
 import com.example.demo.model.Series;
 import com.example.demo.model.Video;
+import com.example.demo.repository.VideoRepository;
 
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
 
 @Service
 public class VideoService {
-    private final ConcurrentHashMap<String, Video> store = new ConcurrentHashMap<>();
+    private final VideoRepository repository;
 
-    public VideoService() {
+    public VideoService(VideoRepository repository) {
+        this.repository = repository;
+    }
+
+    @PostConstruct
+    public void initializeData() {
         // seed data
-        upsertMovieInternal(new Movie("Inception", "Sci-Fi"));
-        store.put(normalizeTitle("Stranger Things"), new Series("Stranger Things", "Sci-Fi"));
-    }
-
-    private String normalizeTitle(String title) {
-        if (title == null) return "";
-        return title.trim().toLowerCase();
-    }
-
-    private void upsertMovieInternal(Movie m) {
-        store.put(normalizeTitle(m.getTitle()), m);
+        if (!repository.findByTitleIgnoreCase("Inception").isPresent()) {
+            repository.save(new Movie("Inception", "Sci-Fi"));
+        }
+        if (!repository.findByTitleIgnoreCase("Stranger Things").isPresent()) {
+            repository.save(new Series("Stranger Things", "Sci-Fi"));
+        }
     }
 
     public List<VideoDto> getAllVideos() {
-        return store.values().stream().map(VideoDto::fromVideo).collect(Collectors.toList());
+        return repository.findAll().stream()
+                .map(VideoDto::fromVideo)
+                .collect(Collectors.toList());
     }
 
     public List<VideoDto> getAvailableVideos() {
-        return store.values().stream().filter(Video::isAvailable).map(VideoDto::fromVideo).collect(Collectors.toList());
+        return repository.findAll().stream()
+                .filter(Video::isAvailable)
+                .map(VideoDto::fromVideo)
+                .collect(Collectors.toList());
     }
 
     public VideoDto upsertMovie(CreateMovieRequest req) {
@@ -47,34 +53,40 @@ public class VideoService {
             throw new IllegalArgumentException("title must not be blank");
         }
 
-        String key = normalizeTitle(title);
-        Movie m = new Movie(title.trim(), genre == null ? "" : genre.trim());
-        store.put(key, m);
-        return VideoDto.fromVideo(m);
+        title = title.trim();
+        genre = genre == null ? "" : genre.trim();
+
+        Movie movie = new Movie(title, genre);
+        repository.findByTitleIgnoreCase(title).ifPresent(existing -> {
+            if (existing instanceof Movie) {
+                movie.setId(existing.getId());
+            }
+        });
+
+        Movie saved = repository.save(movie);
+        return VideoDto.fromVideo(saved);
     }
 
     public VideoDto rentVideo(String title) {
         Video v = findVideoOrThrow(title);
         v.rentVideo();
-        return VideoDto.fromVideo(v);
+        Video updated = repository.save(v);
+        return VideoDto.fromVideo(updated);
     }
 
     public VideoDto returnVideo(String title) {
         Video v = findVideoOrThrow(title);
         v.returnVideo();
-        return VideoDto.fromVideo(v);
+        Video updated = repository.save(v);
+        return VideoDto.fromVideo(updated);
     }
 
     public boolean existsByTitle(String title) {
-        return store.containsKey(normalizeTitle(title));
+        return repository.findByTitleIgnoreCase(title).isPresent();
     }
 
     private Video findVideoOrThrow(String title) {
-        String key = normalizeTitle(title);
-        Video v = store.get(key);
-        if (v == null) {
-            throw new NoSuchElementException(title);
-        }
-        return v;
+        return repository.findByTitleIgnoreCase(title)
+                .orElseThrow(() -> new NoSuchElementException(title));
     }
 }

@@ -1,6 +1,12 @@
 package com.example.demo.model;
 
+import jakarta.persistence.Entity;
+
+@Entity
 public class Movie extends Video {
+
+    public Movie() {
+    }
 
     public Movie(String title, String genre) {
         super(title, genre);
