@@ -1,7 +1,12 @@
 package com.example.demo.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class CreateMovieRequest {
+    @JsonProperty("title")
     private String title;
+    
+    @JsonProperty("genre")
     private String genre;
 
     public CreateMovieRequest() {
